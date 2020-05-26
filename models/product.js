@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const Cart = require('./cart');
 
 const dataFilePath = path.join(
   path.dirname(process.mainModule.filename),
@@ -18,25 +19,48 @@ const getProductsFromFile = (cb) =>{
   });
 };
 
-
 module.exports = class Product {
-  constructor(title, imageUrl, description, price) {
+  constructor(id, title, imageUrl, description, price) {
+    this.id = id;
     this.title = title;
     this.imageUrl = imageUrl;
-    this.description = description;
     this.price = price;
+    this.description = description;
   }
   //save method of Product class
   save() {
-    this.id = Math.random().toString();
     getProductsFromFile( products => {
-      //this can be used inside arrow functions too. and not in normal function
-      products.push(this);
-      fs.writeFile(dataFilePath, JSON.stringify(products), (err) => {
+      if( this.id){
+        const existingProductIndex = products.findIndex( prod => prod.id === this.id);
+        const updatedProducts = [...products];
+        updatedProducts[existingProductIndex] = this;
+        fs.writeFile(dataFilePath, JSON.stringify(updatedProducts), err =>{
           console.log(err);
+        });
+      }
+      else {
+        //this can be used inside arrow functions too. and not in normal function
+        this.id = Math.random().toString();
+        products.push(this);
+        fs.writeFile(dataFilePath, JSON.stringify(products), (err) => {
+            console.log(err);
+        });
+      }
+    });
+  }
+
+  static deleteById(id) {
+    getProductsFromFile(products => {
+      const product = products.find(prod => prod.id === id);
+      const updatedProducts = products.filter(prod => prod.id !== id);
+      fs.writeFile(dataFilePath, JSON.stringify(updatedProducts), err => {
+        if(!err){
+          Cart.deleteProduct(id, product.price);
+        }
       });
     });
   }
+  
   //static method of Product class to access the data from file
   static fetchAll(cb) {
     getProductsFromFile(cb);
